@@ -2,9 +2,49 @@ import React, { useContext } from "react";
 import { assets, plans } from "../assets/assets";
 import { AppContext } from "../context/AppContext";
 import {motion} from 'framer-motion'
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import axios from 'axios'
+
 const BuyCredit = () => {
 
-  const { user } = useContext(AppContext)
+  const { user, backendUrl, loadCreditsData, token, setShowLogin } = useContext(AppContext)
+  const navigate=useNavigate()
+
+  const initPay = async (order) => {
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount : order.amount,
+      currency: order.currency,
+      name: "credits payments",
+      description: "credits payments",
+      order_id: order.id,
+      receipt:order.receipt,
+      handler: async (response) => {
+        navigate('/')
+      }
+
+    }
+    const rzp = new window.Razorpay(options)
+    rzp.open()
+  }
+
+  const paymentRazorpay = async (planId) => {
+    try {
+      if(!user){
+        setShowLogin(true)
+      }
+
+      const {data} = await axios.post(backendUrl + '/api/user/pay-razor',{planId}, {headers: {token}})
+
+      if(data.success){
+        initPay(data.order)
+      }
+      
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
 
   return (
     <motion.div 
@@ -32,7 +72,7 @@ const BuyCredit = () => {
             <p className='mt-6'>
                 <span className='text-3xl font-medium'>${item.price} / {item.credits} credits </span>
             </p>
-            <button className='w-full bg-gray-800 text-white mt-8 text-sm rounded-md py-2.5 min-w-52'>
+            <button onClick={() => paymentRazorpay(item.id)} className='w-full bg-gray-800 text-white mt-8 text-sm rounded-md py-2.5 min-w-52'>
               {
                 user ? 'purchase' : 'Get Started'
               }
